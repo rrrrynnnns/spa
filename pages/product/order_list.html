@@ -1,0 +1,617 @@
+<div class="order-list-container" x-data="orderListComponent">
+    <!-- Header -->
+    <div class="header-section">
+        <h2 class="header-title">
+            <i class="list icon"></i> Order History
+        </h2>
+        <div class="header-actions">
+            <div class="ui icon input">
+                <input type="text" placeholder="Search orders..." x-model.debounce.500="searchQuery">
+                <i class="search icon"></i>
+            </div>
+            <button class="ui primary button" @click="toggleView">
+                <i class=":icon-class='viewMode === \"table\" ? \"th\" : \"list\"' icon"></i>
+                <span x-text="viewMode === 'table' ? 'Cirlce View' : 'Table View'"></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Message -->
+    <div class="ui message" x-show="message" :class="messageType" x-transition>
+        <i class="close icon" @click="message = ''"></i>
+        <span x-text="message"></span>
+    </div>
+
+    <!-- Loading -->
+    <div class="ui active dimmer" x-show="loading" x-transition>
+        <div class="ui text loader">Loading orders...</div>
+    </div>
+
+    <!-- Table View -->
+    <div class="table-container" x-show="viewMode === 'table'" x-transition>
+        <table class="ui celled selectable table">
+            <thead>
+                <tr>
+                    <th>Image</th>
+                    <th @click="sortBy('name')">Name <i class="sort icon" x-show="sortField === 'name'"></i></th>
+                    <th @click="sortBy('address')">Address <i class="sort icon" x-show="sortField === 'address'"></i></th>
+                    <th>Products</th>
+                    <th @click="sortBy('quantity')">Quantity <i class="sort icon" x-show="sortField === 'quantity'"></i></th>
+                    <th>Payment</th>
+                    <th @click="sortBy('created_at')">Date <i class="sort icon" x-show="sortField === 'created_at'"></i></th>
+                    <th @click="sortBy('total_amount')">Total <i class="sort icon" x-show="sortField === 'total_amount'"></i></th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="(order, index) in filteredOrders" :key="index">
+                    <tr>
+                        <td class="image-column">
+                            <img 
+                                :src="getImageUrl(order.avatar_image)" 
+                                alt="Receipt Image" 
+                                class="order-image"
+                                @error="this.src='https://via.placeholder.com/50'"
+                            >
+                        </td>
+                        <td x-text="order.name || 'N/A'"></td>
+                        <td x-text="order.address || 'N/A'"></td>
+                        <td class="products-column">
+                            <template x-for="product in order.products">
+                                <div class="product-item" x-text="product.name"></div>
+                            </template>
+                        </td>
+                        <td x-text="order.products.reduce((sum, product) => sum + (product.quantity || 0), 0)"></td>
+                        <td x-text="order.payment_method || 'N/A'"></td>
+                        <td x-text="formatDate(order.created_at)"></td>
+                        <td x-text="order.total_amount ? `₱${parseFloat(order.total_amount).toFixed(2)}` : 'N/A'"></td>
+                    </tr>
+                </template>
+                <tr x-show="!loading && filteredOrders.length === 0">
+                    <td colspan="8" class="center aligned">No orders found</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="7" class="right aligned"><strong>Total of All Orders:</strong></td>
+                    <td><strong x-text="calculateTotalOrders()"></strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <!-- Card View -->
+    <div class="circle-container" x-show="viewMode === 'cards'" x-transition>
+        <template x-for="(order, index) in filteredOrders" :key="index">
+            <div class="circle-card" @click="selectedOrder = order">
+                <div class="circle-image">
+                    <img :src="getImageUrl(order.avatar_image)""
+                         alt="Receipt Image"
+                         @error="this.src='https://via.placeholder.com/150'">
+                </div>
+                <div class="circle-info">
+                    <h3 x-text="order.name || 'N/A'"></h3>
+                    <p x-text="formatDate(order.created_at)"></p>
+                    <span class="circle-amount" x-text="order.total_amount ? `₱${parseFloat(order.total_amount).toFixed(2)}` : 'N/A'"></span>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="footer-actions">
+        <button class="ui secondary button" @click="navigateTo('product/product_display')">
+            <i class="home icon"></i> Back to Products
+        </button>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal" x-show="selectedOrder" @click.away="selectedOrder = null" x-transition>
+        <div class="modal-content">
+            <span class="close" @click="selectedOrder = null">&times;</span>
+            <template x-if="selectedOrder">
+                <div class="modal-body">
+                    <div class="modal-image">
+                        <img :src="getImageUrl(selectedOrder.avatar_image)""
+                             alt="Receipt Image"
+                             @error="this.src='https://via.placeholder.com/300'">
+                    </div>
+                    <div class="modal-details">
+                        <h2 x-text="selectedOrder.name || 'N/A'"></h2>
+                        <p class="modal-date" x-text="formatDate(selectedOrder.created_at)"></p>
+                        <div class="modal-info">
+                            <p><strong>Email:</strong> <span x-text="selectedOrder.email"></span></p>
+                            <p><strong>Address:</strong> <span x-text="selectedOrder.address"></span></p>
+                            <p><strong>Payment Method:</strong> <span x-text="selectedOrder.payment_method"></span></p>
+                            <p><strong>Total Amount:</strong> <span x-text="`₱${parseFloat(selectedOrder.total_amount).toFixed(2)}`"></span></p>
+                            <div class="modal-products">
+                                <h3>Products</h3>
+                                <template x-for="product in selectedOrder.products">
+                                    <div class="modal-product-item">
+                                        <span x-text="product.name"></span>
+                                        <span x-text="`Qty: ${product.quantity}`"></span>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+</div>
+
+<style>
+.order-list-container {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid #f3f4f6;
+}
+
+.header-title {
+    display: flex;
+    align-items: center;
+    font-size: 2rem;
+    color: #111827;
+    font-weight: 600;
+    margin: 0;
+}
+
+.header-title i {
+    margin-right: 0.75rem;
+    color: #4f46e5;
+}
+
+.header-actions {
+    display: flex;
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.ui.icon.input input {
+    width: 300px;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.ui.icon.input input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+}
+
+.ui.primary.button {
+    background-color: #4f46e5;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    border: none;
+}
+
+.ui.primary.button:hover {
+    background-color: #4338ca;
+    transform: translateY(-1px);
+}
+
+.table-container {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.ui.table {
+    border: none;
+    font-size: 0.95rem;
+}
+
+.ui.table thead th {
+    background: #f9fafb;
+    color: #374151;
+    font-weight: 600;
+    padding: 1rem;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.ui.table tbody td {
+    padding: 1rem;
+    color: #4b5563;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.order-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid #f3f4f6;
+}
+
+.circle-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 2rem;
+    padding: 2rem;
+}
+
+.circle-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.circle-card:hover {
+    transform: translateY(-8px);
+}
+
+.circle-image {
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.circle-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.circle-info {
+    text-align: center;
+    margin-top: 1rem;
+}
+
+.circle-info h3 {
+    font-size: 1.1rem;
+    color: var(--text-dark);
+    margin: 0.5rem 0;
+}
+
+.circle-info p {
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+    margin: 0.25rem 0;
+}
+
+.circle-amount {
+    display: block;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-top: 0.5rem;
+}
+
+.footer-actions {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px solid #f3f4f6;
+}
+
+.ui.secondary.button {
+    background-color: #f3f4f6;
+    color: #374151;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+.ui.secondary.button:hover {
+    background-color: #e5e7eb;
+    color: #111827;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.close {
+    position: absolute;
+    right: 1.5rem;
+    top: 1.5rem;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: var(--secondary-color);
+    z-index: 1;
+}
+
+.modal-body {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+    padding: 2rem;
+}
+
+.modal-image {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.modal-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.modal-details h2 {
+    font-size: 1.75rem;
+    color: var(--text-dark);
+    margin: 0 0 0.5rem 0;
+}
+
+.modal-date {
+    color: var(--secondary-color);
+    margin-bottom: 1.5rem;
+}
+
+.modal-info p {
+    margin: 0.75rem 0;
+    color: var(--text-dark);
+}
+
+.modal-products {
+    margin-top: 1.5rem;
+}
+
+.modal-product-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+@media (max-width: 768px) {
+    .order-list-container {
+        padding: 1rem;
+    }
+
+    .header-section {
+        flex-direction: column;
+        gap: 1.5rem;
+        align-items: stretch;
+    }
+
+    .ui.icon.input input {
+        width: 100%;
+    }
+
+    .header-actions {
+        flex-direction: column;
+    }
+
+    .circle-container {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+
+    .circle-image {
+        width: 120px;
+        height: 120px;
+    }
+
+    .modal-content {
+        padding: 1.5rem;
+    }
+
+    .close {
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+}
+</style>
+
+<script>
+if (!Alpine.store('api')) {
+    Alpine.store('api', {
+        fetch(url, options) {
+            return fetch(url, options);
+        }
+    });
+}
+
+Alpine.data("orderListComponent", () => ({
+    orders: Alpine.reactive([]),
+    message: "",
+    messageType: "",
+    loading: true,
+    viewMode: 'table',
+    searchQuery: '',
+    sortField: 'created_at',
+    sortDirection: 'desc',
+    selectedOrder: null,
+
+    init() {
+        console.log("Initializing orderListComponent");
+        this.fetchOrders();
+        window.addEventListener('payment-submitted', this.handlePaymentSubmitted.bind(this));
+    },
+
+    destroy() {
+        console.log("Destroying orderListComponent");
+        window.removeEventListener('payment-submitted', this.handlePaymentSubmitted);
+    },
+
+    handlePaymentSubmitted(event) {
+        console.log("Received payment-submitted event:", event.detail);
+        this.fetchOrders();
+        this.message = "New order added successfully!";
+        this.messageType = "positive";
+        setTimeout(() => { this.message = ""; }, 3000);
+    },
+
+    async fetchOrders(retries = 3) {
+        this.loading = true;
+        this.message = "Loading orders...";
+        this.messageType = "info";
+        console.log("Fetching orders from API");
+
+        while (retries > 0) {
+            try {
+                const response = await Alpine.store('api').fetch('http://172.17.100.14:3359/banas6/api/payments/', {
+                    method: "GET",
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || `HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("Raw orders data:", JSON.stringify(data, null, 2));
+
+                this.orders = Array.isArray(data) ? data : 
+                             Array.isArray(data.results) ? data.results : [];
+                
+                this.orders = this.orders.map(order => ({
+                    name: order.name || 'N/A',
+                    email: order.email || 'N/A',
+                    address: order.address || 'N/A',
+                    payment_method: order.payment_method || 'N/A',
+                    total_amount: order.total_amount ? parseFloat(order.total_amount) : 0,
+                    products: Array.isArray(order.products) ? order.products : [],
+                    created_at: order.created_at || null,
+                    avatar_image: order.avatar_image || null
+                }));
+
+                console.log("Processed orders:", JSON.stringify(this.orders, null, 2));
+
+                this.message = this.orders.length > 0 ? "" : "No orders found";
+                this.messageType = "";
+                this.loading = false;
+                this.sortOrders();
+                return;
+            } catch (error) {
+                console.error("Error fetching orders:", error);
+                retries--;
+                if (retries === 0) {
+                    this.message = `Failed to load orders: ${error.message}`;
+                    this.messageType = "negative";
+                    this.loading = false;
+                    setTimeout(() => { this.message = ""; }, 5000);
+                }
+            }
+        }
+    },
+
+    formatDate(dateString) {
+        if (!dateString) return "N/A";
+        try {
+            const date = new Date(dateString);
+            if (isNaN(date.getTime())) return "Invalid Date";
+            return date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (e) {
+            return "Invalid Date";
+        }
+    },
+
+    getImageUrl(imagePath) {
+        if (!imagePath) {
+            console.log("No avatar_image provided, using placeholder");
+            return 'https://via.placeholder.com/150';
+        }
+        const isAbsoluteUrl = imagePath.startsWith('http://') || imagePath.startsWith('https://');
+        const url = isAbsoluteUrl ? imagePath : `http://172.17.100.14:3359/banas6${imagePath.startsWith('/') ? '' : '/'}${imagePath}`;
+        console.log(`Resolved image URL: ${url}`);
+        return url;
+    },
+
+    calculateTotalOrders() {
+        const total = this.filteredOrders.reduce((sum, order) => sum + (order.total_amount || 0), 0);
+        return total ? `₱${total.toFixed(2)}` : 'N/A';
+    },
+
+    toggleView() {
+        this.viewMode = this.viewMode === 'table' ? 'cards' : 'table';
+    },
+
+    sortBy(field) {
+        if (this.sortField === field) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            this.sortField = field;
+            this.sortDirection = 'asc';
+        }
+        this.sortOrders();
+    },
+
+    sortOrders() {
+        this.orders.sort((a, b) => {
+            let valueA = a[this.sortField] || '';
+            let valueB = b[this.sortField] || '';
+            
+            if (this.sortField === 'quantity') {
+                valueA = a.products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+                valueB = b.products.reduce((sum, p) => sum + (p.quantity || 0), 0);
+            }
+
+            if (typeof valueA === 'string') {
+                valueA = valueA.toLowerCase();
+                valueB = valueB.toLowerCase();
+            }
+
+            if (valueA < valueB) return this.sortDirection === 'asc' ? -1 : 1;
+            if (valueA > valueB) return this.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    },
+
+    get filteredOrders() {
+        if (!this.searchQuery) return this.orders;
+        const query = this.searchQuery.toLowerCase();
+        return this.orders.filter(order => 
+            order.name?.toLowerCase().includes(query) ||
+            order.address?.toLowerCase().includes(query) ||
+            order.payment_method?.toLowerCase().includes(query) ||
+            order.products.some(p => p.name?.toLowerCase().includes(query))
+        );
+    }
+}));
+</script>

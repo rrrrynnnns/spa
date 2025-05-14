@@ -1,0 +1,559 @@
+<div class="ui segment" x-data="cartComponent">
+    <div class="header-container">
+        <h2 class="ui header">
+            <div class="content">
+                Shopping Cart
+            </div>
+        </h2>
+        <div class="sub-header">
+            View items in your cart
+        </div>
+    </div>
+    <div class="ui message" x-show="message" :class="messageType">
+        <i class="close icon" @click="message = ''"></i>
+        <div x-text="message"></div>
+    </div>
+    <div class="cart-grid">
+        <template x-for="(item, index) in cartItems" :key="index">
+            <div class="cart-card">
+                <div class="cart-checkbox">
+                    <input type="checkbox" 
+                           :checked="selectedItems.includes(index)" 
+                           @click="toggleItemSelection(index)" 
+                           class="cart-checkbox-input">
+                </div>
+                <div class="cart-image">
+                    <img :src="item.p_image || 'https://via.placeholder.com/150'" alt="Product Image" @error="console.log('Cart image failed to load for ' + item.name + ': ' + item.product_image)">
+                </div>
+                <div class="cart-details">
+                    <div class="cart-name" x-text="item.name || 'Unknown'"></div>
+                    <div class="cart-quantity">
+                        <button class="quantity-btn" @click.stop="decrementQuantity(item)" :disabled="item.quantity <= 1">-</button>
+                        <span class="quantity-display" x-text="item.quantity || '0'"></span>
+                        <button class="quantity-btn" @click.stop="incrementQuantity(item)" :disabled="item.stock <= 0">+</button>
+                        <span class="stock-info" x-text="`Available: ${item.stock}`"></span>
+                    </div>
+                    <div class="cart-price" x-text="`Total: $${(item.quantity * item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`"></div>
+                </div>
+                <button class="remove-btn" @click.stop="removeSelectedItems(index)">Remove</button>
+            </div>
+        </template>
+        <div class="no-items" x-show="!cartItems || cartItems.length === 0">
+            Your cart is empty
+        </div>
+    </div>
+    <div class="totals-section" x-show="cartItems && cartItems.length > 0">
+        <div class="totals">
+            <div class="total-item">
+                <strong>Cart Total:</strong>
+                <span x-text="`$${cartItems.reduce((total, item) => total + (item.quantity * item.price), 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`"></span>
+            </div>
+            <div class="total-item">
+                <strong>Selected Items Total:</strong>
+                <span x-text="`$${totalPrice}`"></span>
+            </div>
+        </div>
+        <button class="checkout-btn" @click="proceedToCheckout" :disabled="selectedItems.length === 0">
+            Checkout Selected Items (<span x-text="selectedItems.length"></span>)
+        </button>
+    </div>
+</div>
+
+<style>
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --secondary-color: #64748b;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --background-light: #f8fafc;
+  --background-dark: #0f172a;
+  --text-light: #f1f5f9;
+  --text-dark: #1e293b;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --transition: all 0.3s ease;
+}
+
+.ui.segment {
+  max-width: 1000px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--background-light);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
+  border: none;
+}
+
+.header-container {
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.ui.header {
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.sub-header {
+  font-size: 1.1rem;
+  color: var(--secondary-color);
+  margin-top: 0.5rem;
+}
+
+.ui.message {
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cart-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cart-card {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  transition: var(--transition);
+}
+
+.cart-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+}
+
+.cart-checkbox-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 4px;
+  border: 2px solid var(--primary-color);
+  cursor: pointer;
+}
+
+.cart-image {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--background-light);
+}
+
+.cart-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: var(--transition);
+}
+
+.cart-details {
+  padding: 0 1.5rem;
+  flex-grow: 1;
+}
+
+.cart-name {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin-bottom: 1rem;
+}
+
+.cart-quantity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.quantity-btn {
+  background: var(--background-light);
+  border: 1px solid var(--border-color);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.quantity-btn:not(:disabled):hover {
+  background: var(--primary-color);
+  color: white;
+}
+
+.quantity-display {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  min-width: 2.5rem;
+  text-align: center;
+}
+
+.stock-info {
+  font-size: 0.9rem;
+  color: var(--secondary-color);
+}
+
+.cart-price {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.remove-btn {
+  background: var(--danger-color);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.remove-btn:hover {
+  background: #dc2626;
+  transform: translateY(-2px);
+}
+
+.no-items {
+  text-align: center;
+  padding: 3rem;
+  color: var(--secondary-color);
+  font-size: 1.25rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  border: 2px dashed var(--border-color);
+}
+
+.totals-section {
+  margin-top: 2rem;
+  padding: 2rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.totals {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.total-item {
+  font-size: 1.25rem;
+  color: var(--text-dark);
+}
+
+.checkout-btn {
+  width: 100%;
+  background: var(--primary-color);
+  color: white;
+  padding: 1rem;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.checkout-btn:not(:disabled):hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+.checkout-btn:disabled {
+  background: var(--secondary-color);
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .ui.segment {
+    margin: 1rem;
+    padding: 1.5rem;
+    border-radius: 12px;
+  }
+
+  .cart-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.5rem;
+  }
+
+  .cart-image {
+    width: 100%;
+    height: 200px;
+  }
+
+  .cart-details {
+    padding: 0;
+    width: 100%;
+  }
+
+  .cart-quantity {
+    justify-content: space-between;
+  }
+
+  .remove-btn {
+    width: 100%;
+  }
+
+  .totals {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .ui.segment {
+    padding: 1rem;
+  }
+
+  .ui.header {
+    font-size: 1.75rem;
+  }
+
+  .cart-name {
+    font-size: 1.1rem;
+  }
+
+  .cart-price {
+    font-size: 1.1rem;
+  }
+
+  .quantity-btn {
+    padding: 0.4rem 0.8rem;
+  }
+
+  .total-item {
+    font-size: 1.1rem;
+  }
+
+  .checkout-btn {
+    padding: 0.75rem;
+    font-size: 1rem;
+  }
+}
+</style>
+
+<script>
+if (!Alpine.store('api')) {
+    Alpine.store('api', {
+        fetch(url, options) {
+            return fetch(url, options);
+        }
+    });
+}
+
+Alpine.data("cartComponent", () => ({
+    cartItems: Alpine.reactive(JSON.parse(localStorage.getItem('cart')) || []),
+    selectedItems: Alpine.reactive([]),
+    message: "",
+    messageType: "",
+    editMode: false,
+
+    init() {
+        console.log('Cart items loaded:', this.cartItems);
+        window.addEventListener('storage', this.handleStorageChange.bind(this));
+        const checkoutItems = JSON.parse(localStorage.getItem('checkoutItems')) || [];
+        if (checkoutItems.length > 0) {
+            this.message = "Proceed to payment to complete your order.";
+            this.messageType = "yellow";
+            setTimeout(() => { this.message = ""; }, 5000);
+        }
+    },
+
+    destroy() {
+        window.removeEventListener('storage', this.handleStorageChange);
+    },
+
+    handleStorageChange(event) {
+        if (event.key === 'cart') {
+            this.cartItems = Alpine.reactive(JSON.parse(event.newValue) || []);
+            this.selectedItems = [];
+            console.log('Cart updated from storage:', this.cartItems);
+        }
+    },
+
+    toggleEditMode() {
+        this.editMode = !this.editMode;
+        if (!this.editMode) {
+            this.selectedItems = [];
+        }
+    },
+
+    toggleItemSelection(index) {
+        if (this.selectedItems.includes(index)) {
+            this.selectedItems = this.selectedItems.filter(i => i !== index);
+        } else {
+            this.selectedItems.push(index);
+        }
+    },
+
+    get totalPrice() {
+        return this.selectedItems.reduce((total, index) => {
+            const item = this.cartItems[index];
+            return total + (item.quantity * item.price);
+        }, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+
+    async incrementQuantity(item, retries = 3) {
+        if (item.stock < 1) {
+            this.message = `${item.name} has insufficient stock!`;
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        while (retries > 0) {
+            try {
+                const updatedStock = item.stock - 1;
+                const response = await Alpine.store('api').fetch(`http://172.17.100.14:3359/banas6/api/products/${item.id}/`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ stock: updatedStock }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Failed to update stock");
+                }
+
+                item.stock = updatedStock;
+                item.quantity += 1;
+                localStorage.setItem('cart', JSON.stringify(this.cartItems));
+
+                const stockUpdatedEvent = new CustomEvent('stock-updated', {
+                    detail: { productId: item.id, stock: updatedStock },
+                    bubbles: true
+                });
+                window.dispatchEvent(stockUpdatedEvent);
+
+                this.message = `Increased quantity of ${item.name}!`;
+                this.messageType = "green";
+                setTimeout(() => { this.message = ""; }, 3000);
+                return;
+            } catch (error) {
+                console.error("Error increasing quantity:", error);
+                retries--;
+                if (retries === 0) {
+                    this.message = `Failed to increase quantity: ${error.message}`;
+                    this.messageType = "red";
+                    setTimeout(() => { this.message = ""; }, 5000);
+                }
+            }
+        }
+    },
+
+    async decrementQuantity(item, retries = 3) {
+        if (item.quantity <= 1) {
+            this.message = `Cannot reduce quantity below 1 for ${item.name}. Use Remove instead.`;
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        while (retries > 0) {
+            try {
+                const updatedStock = item.stock + 1;
+                const response = await Alpine.store('api').fetch(`http://172.17.100.14:3359/banas6/api/products/${item.id}/`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ stock: updatedStock }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Failed to update stock");
+                }
+
+                item.stock = updatedStock;
+                item.quantity -= 1;
+                localStorage.setItem('cart', JSON.stringify(this.cartItems));
+
+                const stockUpdatedEvent = new CustomEvent('stock-updated', {
+                    detail: { productId: item.id, stock: updatedStock },
+                    bubbles: true
+                });
+                window.dispatchEvent(stockUpdatedEvent);
+
+                this.message = `Decreased quantity of ${item.name}!`;
+                this.messageType = "green";
+                setTimeout(() => { this.message = ""; }, 3000);
+                return;
+            } catch (error) {
+                console.error("Error decreasing quantity:", error);
+                retries--;
+                if (retries === 0) {
+                    this.message = `Failed to decrease quantity: ${error.message}`;
+                    this.messageType = "red";
+                    setTimeout(() => { this.message = ""; }, 5000);
+                }
+            }
+        }
+    },
+
+    async removeSelectedItems(index) {
+        const originalCart = [...this.cartItems];
+        const itemsToRemove = index !== undefined ? [index] : [...this.selectedItems].sort((a, b) => b - a);
+
+        try {
+            for (const idx of itemsToRemove) {
+                const item = this.cartItems[idx];
+                const updatedStock = item.stock + item.quantity;
+                const response = await Alpine.store('api').fetch(`http://172.17.100.14:3359/banas6/api/products/${item.id}/`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ stock: updatedStock }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || "Failed to update stock");
+                }
+
+                this.cartItems.splice(idx, 1);
+                const stockUpdatedEvent = new CustomEvent('stock-updated', {
+                    detail: { productId: item.id, stock: updatedStock },
+                    bubbles: true
+                });
+                window.dispatchEvent(stockUpdatedEvent);
+            }
+
+            localStorage.setItem('cart', JSON.stringify(this.cartItems));
+            this.selectedItems = this.selectedItems.filter(i => !itemsToRemove.includes(i));
+            this.message = "Item(s) removed from cart!";
+            this.messageType = "green";
+            setTimeout(() => { this.message = ""; }, 3000);
+        } catch (error) {
+            console.error("Error removing items:", error);
+            this.cartItems = originalCart;
+            localStorage.setItem('cart', JSON.stringify(this.cartItems));
+            this.message = `Failed to remove items: ${error.message}`;
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 5000);
+        }
+    },
+
+    proceedToCheckout() {
+        if (this.selectedItems.length === 0) {
+            this.message = "Please select at least one item to proceed!";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        const selectedCartItems = this.selectedItems.map(index => this.cartItems[index]);
+        localStorage.setItem('checkoutItems', JSON.stringify(selectedCartItems));
+        navigateTo('product/check_out');
+    }
+}));
+</script>

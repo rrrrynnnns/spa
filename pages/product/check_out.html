@@ -1,0 +1,908 @@
+<div class="checkout-container" x-data="paymentComponent">
+    <!-- Header -->
+    <div class="checkout-header">
+        <div class="logo-section">
+            <i class="shopping bag icon"></i>
+            <h1>Checkout</h1>
+        </div>
+        <div class="steps-section">
+            <div class="step active">
+                <span class="step-number">1</span>
+                <span class="step-text">Review</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Messages -->
+    <div x-show="message" 
+         :class="messageType"
+         class="alert-message"
+         x-transition>
+        <i class="info circle icon"></i>
+        <span x-text="message"></span>
+        <i class="close icon" @click="message = ''"></i>
+    </div>
+
+    <div class="checkout-content">
+        <!-- Cart Summary -->
+        <div class="cart-summary">
+            <div class="section-title">
+                <i class="cart icon"></i>
+                <h2>Cart Summary</h2>
+            </div>
+            
+            <div class="cart-items" x-show="cartItems.length > 0">
+                <template x-for="(item, index) in cartItems" :key="index">
+                    <div class="cart-item" @click="toggleDetails(index)">
+                        <div class="item-image">
+                            <img :src="item.p_image || 'https://via.placeholder.com/80'" 
+                                 :alt="item.name">
+                        </div>
+                        <div class="item-details">
+                            <h3 x-text="item.name"></h3>
+                            <p class="description" x-text="item.description"></p>
+                            <div class="price-info">
+                                <span class="quantity" x-text="`Qty: ${item.quantity}`"></span>
+                                <span class="price" x-text="`$${parseFloat(item.price).toFixed(2)}`"></span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <div class="cart-total">
+                    <div class="subtotal">
+                        <span>Subtotal</span>
+                        <span x-text="`$${totalAmount}`"></span>
+                    </div>
+                    <div class="shipping">
+                        <span>Shipping</span>
+                        <span>Free</span>
+                    </div>
+                    <div class="total">
+                        <span>Total</span>
+                        <span x-text="`$${totalAmount}`"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="empty-cart" x-show="cartItems.length === 0">
+                <i class="shopping cart icon"></i>
+                <p>Your cart is empty</p>
+            </div>
+        </div>
+
+        <!-- Payment Form -->
+        <div class="payment-form">
+            <div class="section-title">
+                <i class="credit card icon"></i>
+                <h2>Payment Details</h2>
+            </div>
+
+            <form class="form-fields">
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <div class="input-wrapper">
+                        <i class="user icon"></i>
+                        <input type="text" 
+                               x-model="paymentData.name" 
+                               placeholder="John Doe" 
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Email Address *</label>
+                    <div class="input-wrapper">
+                        <i class="envelope icon"></i>
+                        <input type="email" 
+                               x-model="paymentData.email" 
+                               placeholder="john@example.com" 
+                               required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Delivery Address *</label>
+                    <div class="input-wrapper">
+                        <i class="home icon"></i>
+                        <textarea x-model="paymentData.address" 
+                                  placeholder="Enter your complete address..."
+                                  required></textarea>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Payment Method *</label>
+                    <div class="payment-options">
+                        <label class="payment-option">
+                            <input type="radio" 
+                                   x-model="paymentData.payment_method" 
+                                   value="gcash">
+                            <span class="option-content">
+                                <img src="/development/app/media/products/" alt="GCash" class="payment-logo">
+                            </span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" 
+                                   x-model="paymentData.payment_method" 
+                                   value="maya">
+                            <span class="option-content">
+                                <img src="/assets/maya-logo.png" alt="Maya" class="payment-logo">
+                            </span>
+                        </label>
+                        <label class="payment-option">
+                            <input type="radio" 
+                                   x-model="paymentData.payment_method" 
+                                   value="paypal">
+                            <span class="option-content">
+                                <img src="/assets/paypal-logo.png" alt="PayPal" class="payment-logo">
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Upload Receipt (Optional)</label>
+                    <div class="upload-section">
+                        <div class="upload-area" 
+                             @click="$refs.fileInput.click()"
+                             x-show="!imagePreview">
+                            <i class="upload icon"></i>
+                            <p>Click to upload receipt</p>
+                            <span>Maximum file size: 5MB</span>
+                        </div>
+                        <input type="file" 
+                               x-ref="fileInput"
+                               @change="handleImageChange($event)"
+                               accept="image/jpeg,image/png,image/gif"
+                               class="hidden">
+                        <div class="preview" x-show="imagePreview">
+                            <img :src="imagePreview" alt="Receipt Preview">
+                            <button @click.prevent="clearImage" class="remove-image">
+                                <i class="times circle icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" 
+                            @click.prevent="navigateTo('product/view_cart')"
+                            class="back-button">
+                        <i class="arrow left icon"></i>
+                        Back to Cart
+                    </button>
+                    <button type="submit" 
+                            @click.prevent="submitPayment"
+                            class="submit-button">
+                        Complete Order
+                        <i class="arrow right icon"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+  --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --secondary-color: #64748b;
+  --success-color: #22c55e;
+  --danger-color: #ef4444;
+  --background-light: #f8fafc;
+  --background-dark: #0f172a;
+  --text-light: #f1f5f9;
+  --text-dark: #1e293b;
+  --border-color: #e2e8f0;
+  --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  --transition: all 0.3s ease;
+}
+
+.checkout-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--background-light);
+  border-radius: 16px;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1);
+}
+
+.checkout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo-section i {
+  font-size: 2.25rem;
+  color: var(--primary-color);
+}
+
+.logo-section h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.steps-section {
+    display: flex;
+    gap: 2rem;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #E2E8F0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #718096;
+}
+
+.step.active .step-number {
+    background: #4299E1;
+    color: white;
+}
+
+.step-text {
+    color: #718096;
+}
+
+.alert-message {
+    padding: 1rem;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-weight: 500;
+}
+
+.alert-message.red {
+    background: #FED7D7;
+    color: #C53030;
+}
+
+.alert-message.green {
+    background: #C6F6D5;
+    color: #2F855A;
+}
+
+.alert-message.yellow {
+    background: #FEFCBF;
+    color: #975A16;
+}
+
+.checkout-content {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 2rem;
+}
+
+.cart-summary, .payment-form {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--card-shadow);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.section-title i {
+  font-size: 1.5rem;
+  color: var(--primary-color);
+}
+
+.section-title h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-dark);
+  margin: 0;
+}
+
+.cart-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.cart-item {
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  background: var(--background-light);
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  transition: var(--transition);
+}
+
+.cart-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--card-shadow);
+}
+
+.item-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.item-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.item-details h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #2D3748;
+}
+
+.item-details .description {
+    color: #718096;
+    font-size: 0.875rem;
+    margin: 0.5rem 0;
+}
+
+.price-info {
+    display: flex;
+    justify-content: space-between;
+    color: #4A5568;
+}
+
+.cart-total {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #E2E8F0;
+}
+
+.cart-total > div {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.cart-total .total {
+    font-weight: bold;
+    color: #2D3748;
+    font-size: 1.125rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid #E2E8F0;
+}
+
+.payment-form {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.form-group {
+    margin-bottom: 2rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-dark);
+    margin-bottom: 0.75rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper i {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #A0AEC0;
+}
+
+.input-wrapper input,
+.input-wrapper textarea,
+.input-wrapper select {
+  width: 100%;
+  padding: 1rem 1rem 1rem 2.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: var(--transition);
+  background: var(--background-light);
+}
+
+.input-wrapper input:focus,
+.input-wrapper textarea:focus,
+.input-wrapper select:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  outline: none;
+}
+
+.payment-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.payment-option input {
+    display: none;
+}
+
+.option-content {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    border: 2px solid #E2E8F0;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.payment-logo {
+    width: 100%;
+    height: 40px;
+    object-fit: contain;
+}
+
+.payment-option input:checked + .option-content {
+    border-color: #4299E1;
+    background: #EBF8FF;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(66, 153, 225, 0.2);
+}
+
+.payment-option:hover .option-content {
+    border-color: #CBD5E0;
+    transform: translateY(-2px);
+}
+
+.upload-section {
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.upload-section:hover {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.upload-area {
+    cursor: pointer;
+}
+
+.upload-area i {
+  font-size: 2.5rem;
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.preview {
+    position: relative;
+}
+
+.preview img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 6px;
+}
+
+.remove-image {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: #FC8181;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+}
+
+.back-button,
+.submit-button {
+  padding: 1rem 2rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: var(--transition);
+}
+
+.back-button {
+  background: var(--background-light);
+  color: var(--text-dark);
+  border: 1px solid var(--border-color);
+}
+
+.back-button:hover {
+  background: var(--border-color);
+  transform: translateY(-2px);
+}
+
+.submit-button {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+}
+
+.submit-button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .checkout-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .checkout-container {
+        padding: 1rem;
+    }
+    
+    .steps-section {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .back-button,
+    .submit-button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+
+<script>
+if (!Alpine.store('api')) {
+    Alpine.store('api', {
+        fetch(url, options) {
+            return fetch(url, options);
+        }
+    });
+}
+
+Alpine.data("paymentComponent", () => ({
+    paymentData: Alpine.reactive({
+        name: '',
+        email: '',
+        address: '',
+        payment_method: '',
+        avatar_image: null
+    }),
+    cartItems: Alpine.reactive(JSON.parse(localStorage.getItem('checkoutItems')) || []),
+    message: '',
+    messageType: '',
+    imagePreview: null,
+    showDetails: false,
+    selectedItem: null,
+
+    get totalAmount() {
+        return this.cartItems
+            .reduce((total, item) => total + ((item.quantity || 0) * (item.price || 0)), 0)
+            .toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    },
+
+    init() {
+        console.log("Initializing paymentComponent with items:", this.cartItems);
+        const navigationEntries = performance.getEntriesByType('navigation');
+        if (navigationEntries.length > 0 && navigationEntries[0].type === 'back_forward') {
+            this.message = "Checkout items may have been reset due to navigation.";
+            this.messageType = "yellow";
+            setTimeout(() => { this.message = ""; }, 3000);
+        }
+
+        window.addEventListener('popstate', () => {
+            this.message = "Checkout items may have been reset due to navigation.";
+            this.messageType = "yellow";
+            setTimeout(() => { this.message = ""; }, 3000);
+        });
+
+        if (!this.cartItems || this.cartItems.length === 0) {
+            this.message = "No items selected for payment. Please return to the cart.";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+        }
+    },
+
+    toggleDetails(index) {
+        if (index === null) {
+            this.showDetails = false;
+            this.selectedItem = null;
+        } else {
+            this.showDetails = !this.showDetails;
+            this.selectedItem = this.cartItems[index];
+        }
+    },
+
+    resetCart() {
+        console.log("Resetting checkout items");
+        this.cartItems = [];
+        localStorage.removeItem('checkoutItems');
+    },
+
+    handleImageChange(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!validImageTypes.includes(file.type)) {
+                this.message = "Please upload a valid image (JPEG, PNG or GIF).";
+                this.messageType = "red";
+                setTimeout(() => { this.message = ""; }, 3000);
+                if (this.$refs.fileInput) {
+                    this.$refs.fileInput.value = '';
+                }
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                this.message = "Image file is too large (max 5MB).";
+                this.messageType = "red";
+                setTimeout(() => { this.message = ""; }, 3000);
+                if (this.$refs.fileInput) {
+                    this.$refs.fileInput.value = '';
+                }
+                return;
+            }
+
+            if (this.imagePreview) {
+                URL.revokeObjectURL(this.imagePreview);
+            }
+
+            this.paymentData.avatar_image = file;
+            this.imagePreview = URL.createObjectURL(file);
+            console.log("Image selected:", file.name, file.type, file.size);
+        } else {
+            if (this.imagePreview) {
+                URL.revokeObjectURL(this.imagePreview);
+            }
+            this.paymentData.avatar_image = null;
+            this.imagePreview = null;
+            console.log("No image selected");
+        }
+    },
+
+    handleImageError() {
+        this.message = "Failed to load image. Please select a valid image.";
+        this.messageType = "red";
+        setTimeout(() => { this.message = ""; }, 3000);
+        if (this.imagePreview) {
+            URL.revokeObjectURL(this.imagePreview);
+        }
+        this.paymentData.avatar_image = null;
+        this.imagePreview = null;
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+    },
+
+    clearImage() {
+        if (this.imagePreview) {
+            URL.revokeObjectURL(this.imagePreview);
+        }
+        this.paymentData.avatar_image = null;
+        this.imagePreview = null;
+        if (this.$refs.fileInput) {
+            this.$refs.fileInput.value = '';
+        }
+        console.log("Image cleared, other form fields preserved:", {
+            name: this.paymentData.name,
+            email: this.paymentData.email,
+            address: this.paymentData.address,
+            payment_method: this.paymentData.payment_method
+        });
+    },
+
+    async submitPayment() {
+        console.log("Submitting payment with data:", this.paymentData, "and items:", this.cartItems);
+
+        const isFormValid = ['name', 'email', 'address', 'payment_method'].every(
+            key => this.paymentData[key].toString().trim() !== ""
+        );
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!isFormValid || !emailRegex.test(this.paymentData.email)) {
+            this.message = "Please fill in all required fields with valid data (e.g., valid email).";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        if (this.cartItems.length === 0) {
+            this.message = "Your checkout is empty!";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        const isCartValid = this.cartItems.every(item => {
+            return item.id && item.name && 
+                   Number.isFinite(Number(item.quantity)) && 
+                   Number.isFinite(Number(item.price));
+        });
+        if (!isCartValid) {
+            this.message = "Invalid checkout items. Please check your selection.";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        if (this.paymentData.avatar_image) {
+            const validImageTypes = ['image/jpeg', 'image/png', 'image/gif'];
+            if (!(this.paymentData.avatar_image instanceof File) || 
+                !validImageTypes.includes(this.paymentData.avatar_image.type)) {
+                this.message = "Please upload a valid image (JPEG, PNG or GIF).";
+                this.messageType = "red";
+                setTimeout(() => { this.message = ""; }, 3000);
+                return;
+            }
+            if (this.paymentData.avatar_image.size > 5 * 1024 * 1024) {
+                this.message = "Image file is too large (max 5MB).";
+                this.messageType = "red";
+                setTimeout(() => { this.message = ""; }, 3000);
+                return;
+            }
+        }
+
+        this.message = "Processing payment...";
+        this.messageType = "yellow";
+
+        const totalAmount = parseFloat(this.totalAmount.replace(/,/g, ''));
+        if (isNaN(totalAmount) || totalAmount <= 0) {
+            this.message = "Invalid total amount.";
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 3000);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('name', this.paymentData.name);
+        formData.append('email', this.paymentData.email);
+        formData.append('address', this.paymentData.address);
+        formData.append('payment_method', this.paymentData.payment_method);
+        formData.append('total_amount', totalAmount.toString());
+        formData.append('products', JSON.stringify(this.cartItems.map(item => ({
+            id: Number(item.id),
+            name: item.name,
+            quantity: Number(item.quantity),
+            price: Number(item.price)
+        }))));
+
+        if (this.paymentData.avatar_image instanceof File) {
+            formData.append('avatar_image', this.paymentData.avatar_image);
+            console.log("Appending avatar_image:", {
+                name: this.paymentData.avatar_image.name,
+                type: this.paymentData.avatar_image.type,
+                size: this.paymentData.avatar_image.size
+            });
+        } else {
+            console.log("No avatar_image provided, sending without image.");
+        }
+
+        try {
+            const response = await Alpine.store('api').fetch('http://172.17.100.14:3359/banas6/api/payments/', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                let errorMessage = `HTTP error! Status: ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    errorMessage = errorData.detail || errorMessage;
+                } catch (e) {
+                    console.warn("Could not parse error response:", e);
+                }
+                throw new Error(errorMessage);
+            }
+
+            const data = await response.json();
+            console.log("Payment successful, response data:", data);
+
+            // Update stock quantities in the database
+            for (const item of this.cartItems) {
+                const updatedStock = item.stock - item.quantity;
+                const stockResponse = await Alpine.store('api').fetch(`http://172.17.100.14:3359/banas6/api/products/${item.id}/`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ stock: updatedStock }),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!stockResponse.ok) {
+                    let errorMessage = "Failed to update stock";
+                    try {
+                        const errorData = await stockResponse.json();
+                        errorMessage = errorData.detail || errorMessage;
+                    } catch (e) {
+                        console.warn("Could not parse stock update error:", e);
+                    }
+                    throw new Error(errorMessage);
+                }
+
+                // Dispatch stock updated event
+                const stockUpdatedEvent = new CustomEvent('stock-updated', {
+                    detail: { productId: item.id, stock: updatedStock },
+                    bubbles: true
+                });
+                window.dispatchEvent(stockUpdatedEvent);
+            }
+
+            // Update the cart in localStorage
+            const originalCart = JSON.parse(localStorage.getItem('cart')) || [];
+            const checkoutItemIds = this.cartItems.map(item => item.id);
+            const updatedCart = originalCart.filter(item => !checkoutItemIds.includes(item.id));
+            localStorage.setItem('cart', JSON.stringify(updatedCart));
+
+            // Clear checkoutItems
+            this.resetCart();
+
+            this.message = "Payment successful! Redirecting to order list...";
+            this.messageType = "green";
+
+            const paymentSubmittedEvent = new CustomEvent('payment-submitted', {
+                detail: { paymentData: data },
+                bubbles: true
+            });
+            console.log("Dispatching payment-submitted event with data:", data);
+            window.dispatchEvent(paymentSubmittedEvent);
+
+            setTimeout(() => {
+                this.message = "";
+                console.log("Navigating to order list");
+                navigateTo('product/order_list');
+            }, 2000);
+        } catch (error) {
+            console.error("Error processing payment:", error);
+            this.message = `Error processing payment: ${error.message}`;
+            this.messageType = "red";
+            setTimeout(() => { this.message = ""; }, 5000);
+        }
+    }
+}));
+</script>
